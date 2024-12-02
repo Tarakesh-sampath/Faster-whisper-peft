@@ -27,7 +27,7 @@ class LiveTranscriber:
         
         # Audio stream configurations
         self.target_sample_rate = 16000  # Whisper models use 16kHz
-        self.chunk_duration = 5  # Seconds of audio to transcribe at once
+        self.chunk_duration = 4  # Seconds of audio to transcribe at once
         self.chunk_samples = self.target_sample_rate * self.chunk_duration
         
         # Get system default sample rate
@@ -99,8 +99,8 @@ class LiveTranscriber:
             print("\nTranscription stopped by user.")
 
 def main():
-    transcriber = LiveTranscriber()
     print("program start - wait till setup complete")
+    transcriber = LiveTranscriber()
     transcriber.start_transcription()
 
 if __name__ == "__main__":
