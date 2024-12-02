@@ -5,7 +5,7 @@ from transformers import pipeline
 import torch
 
 class LiveTranscriber:
-    def __init__(self, model_name="Tarakeshwaran/faster-whisper-small-en", device=None):
+    def __init__(self, model_name="Tarakeshwaran/whisper-small-en", device=None):
         """
         Initialize the live transcription system.
         
