@@ -100,6 +100,7 @@ class LiveTranscriber:
 
 def main():
     transcriber = LiveTranscriber()
+    print("program start - wait till setup complete")
     transcriber.start_transcription()
 
 if __name__ == "__main__":
