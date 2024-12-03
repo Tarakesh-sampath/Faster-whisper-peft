@@ -8,6 +8,11 @@ WORKDIR /app
 COPY app.py /app
 
 # Install dependencies
+RUN apt-get update
+RUN apt-get install libasound-dev libportaudio2 libportaudiocpp0 portaudio19-dev -y
+RUN apt-get install gcc -y
+RUN sudo apt-get install libasound-dev
+RUN python -m pip install --no-cache-dir pyaudio
 RUN python -m pip install --no-cache-dir sounddevice scipy transformers 
 RUN python -m pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
 

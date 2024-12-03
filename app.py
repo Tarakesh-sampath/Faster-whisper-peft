@@ -1,9 +1,12 @@
 import numpy as np
-import sounddevice as sd
+import pyaudio
+import wave
 from scipy.signal import resample
 from transformers import pipeline
 import torch
 import warnings
+import queue
+import threading
 warnings.filterwarnings("ignore")
 
 class LiveTranscriber:
@@ -32,34 +35,57 @@ class LiveTranscriber:
         self.chunk_duration = 4  # Seconds of audio to transcribe at once
         self.chunk_samples = self.target_sample_rate * self.chunk_duration
         
-        # Get system default sample rate
-        self.system_sample_rate = sd.query_devices(kind='input')['default_samplerate']
+        # PyAudio setup
+        self.pyaudio_instance = pyaudio.PyAudio()
+        
+        # Get system default input device
+        self.system_sample_rate = int(self.pyaudio_instance.get_default_input_device_info()['defaultSampleRate'])
+        
+        # Audio queue for thread-safe processing
+        self.audio_queue = queue.Queue()
+        
+        # Transcription thread
+        self.transcription_thread = None
+        self.is_running = False
+        
         print(f"Using device: {self.device}")
         print(f"System Sample Rate: {self.system_sample_rate}")
     
-    def audio_callback(self, indata, frames, time, status):
+    def _audio_callback(self, in_data, frame_count, time_info, status):
         """
-        Callback function for processing audio stream.
+        Callback function for PyAudio stream.
         
-        :param indata: Input audio data
-        :param frames: Number of frames
-        :param time: Timestamp
+        :param in_data: Input audio data
+        :param frame_count: Number of frames
+        :param time_info: Time information
         :param status: Stream status
         """
-        if status:
-            print(f"Stream error: {status}")
-            return
-        
-        # Convert to numpy array and ensure mono
-        audio = indata.flatten()
-        
-        # Resample to 16kHz if needed
-        if self.system_sample_rate != self.target_sample_rate:
-            audio = self._resample(audio, self.system_sample_rate, self.target_sample_rate)
-        
-        # Run transcription
-        transcription = self.transcription_pipeline(audio)
-        print(f"Transcription: {transcription['text']}")
+        # Convert input data to numpy array
+        audio_data = np.frombuffer(in_data, dtype=np.float32)
+        self.audio_queue.put(audio_data)
+        return (None, pyaudio.paContinue)
+    
+    def _transcription_worker(self):
+        """
+        Background worker for processing audio chunks and transcribing
+        """
+        while self.is_running:
+            try:
+                # Get audio chunk with timeout to allow checking is_running
+                audio = self.audio_queue.get(timeout=1)
+                
+                # Resample to 16kHz if needed
+                if self.system_sample_rate != self.target_sample_rate:
+                    audio = self._resample(audio, self.system_sample_rate, self.target_sample_rate)
+                
+                # Run transcription
+                transcription = self.transcription_pipeline(audio)
+                print(f"Transcription: {transcription['text']}")
+                
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"Transcription error: {e}")
     
     def _resample(self, audio, orig_sr, target_sr):
         """
@@ -86,19 +112,34 @@ class LiveTranscriber:
         
         try:
             # Open audio stream
-            with sd.InputStream(
-                samplerate=self.system_sample_rate,
+            self.stream = self.pyaudio_instance.open(
+                format=pyaudio.paFloat32,
                 channels=1,  # Mono
-                dtype='float32',
-                callback=self.audio_callback,
-                blocksize=int(self.system_sample_rate * self.chunk_duration)
-            ):
-                # Keep the main thread running
-                while True:
-                    sd.sleep(1000)
+                rate=self.system_sample_rate,
+                input=True,
+                frames_per_buffer=int(self.system_sample_rate * self.chunk_duration),
+                stream_callback=self._audio_callback
+            )
+            
+            # Start transcription thread
+            self.is_running = True
+            self.transcription_thread = threading.Thread(target=self._transcription_worker)
+            self.transcription_thread.start()
+            
+            # Keep main thread running
+            self.transcription_thread.join()
         
         except KeyboardInterrupt:
             print("\nTranscription stopped by user.")
+        finally:
+            # Cleanup
+            self.is_running = False
+            if hasattr(self, 'stream'):
+                self.stream.stop_stream()
+                self.stream.close()
+            self.pyaudio_instance.terminate()
+            if self.transcription_thread:
+                self.transcription_thread.join()
 
 def main():
     print("program start - wait till setup complete")
