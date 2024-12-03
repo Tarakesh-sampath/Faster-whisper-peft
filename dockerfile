@@ -1,22 +1,15 @@
-# Use an official Python runtime as a parent image
+# Use an official Python runtime as a base image
 FROM python:3.10.11-slim
 
 # Set the working directory in the container
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy the current directory contents into the container at /usr/src/app
-COPY . .
+# Copy the current directory contents into the container
+COPY app.py /app
 
-# Install any needed packages specified in requirements.txt 
-RUN python -m pip install -U pip
-RUN python -m pip install torch --index-url https://download.pytorch.org/whl/cu124
-RUN python -m pip install sounddevice transformers scipy
-RUN apt-get update \
-        && apt-get install portaudio19-dev -y 
-RUN apt-get install -y ffmpeg
-RUN python -m pip install gunicorn
-ADD . .
+# Install dependencies
+RUN python -m pip install --no-cache-dir sounddevice scipy transformers 
+RUN python -m pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
 
-EXPOSE 5000
-
-CMD gunicorn --bind 0.0.0.0:5000 --access-logfile - --error-logfile - app:app
+# Command to run the script
+CMD ["python", "app.py"]
