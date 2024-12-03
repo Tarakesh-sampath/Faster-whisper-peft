@@ -3,9 +3,11 @@ import sounddevice as sd
 from scipy.signal import resample
 from transformers import pipeline
 import torch
+import warnings
+warnings.filterwarnings("ignore")
 
 class LiveTranscriber:
-    def __init__(self, model_name="Tarakeshwaran/whisper-small-en", device=None):
+    def __init__(self, model_name="openai/whisper-small.en", device=None):
         """
         Initialize the live transcription system.
         
@@ -20,7 +22,7 @@ class LiveTranscriber:
         
         # Load Whisper transcription pipeline
         self.transcription_pipeline = pipeline(
-            task="automatic-speech-recognition",
+            task='automatic-speech-recognition',
             model=model_name,
             device=0 if self.device == "cuda" else -1
         )
