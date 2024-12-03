@@ -1,5 +1,6 @@
 /.gitignore
 /env
-/finetune_attempt_faster_whisper
+/finetune_attempt_faster_whisper.ipynb
 /README.MD
 /LICENCE
+/finetune_whisper_test2.ipynb
