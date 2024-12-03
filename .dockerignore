@@ -1,6 +1,5 @@
 /.gitignore
 /env
-/#faster-whisper-small-en
 /finetune_attempt_faster_whisper
 /README.MD
 /LICENCE

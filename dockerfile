@@ -8,7 +8,15 @@ WORKDIR /usr/src/app
 COPY . .
 
 # Install any needed packages specified in requirements.txt 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install -U pip
+RUN python -m pip install torch --index-url https://download.pytorch.org/whl/cu124
+RUN python -m pip install sounddevice transformers scipy
+RUN apt-get update \
+        && apt-get install portaudio19-dev -y 
+RUN apt-get install -y ffmpeg
 
-# Run app.py when the container launches
-CMD ["python", "./app.py"]
+ADD . .
+
+EXPOSE 5000
+
+CMD gunicorn --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run_app:app
